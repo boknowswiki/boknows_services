@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"log"
 	"net/http"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/boknowswiki/boknows_services/garagesale/schema"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -29,12 +31,34 @@ func main() {
 	}
 	defer db.Close()
 
+	flag.Parse()
+
+	switch flag.Arg(0) {
+	case "migrate":
+		if err := schema.Migrate(db); err != nil {
+			log.Println("error applying migrations", err)
+			os.Exit(1)
+		}
+		log.Println("Migrations complete")
+		return
+
+	case "seed":
+		if err := schema.Seed(db); err != nil {
+			log.Println("error seeding database", err)
+			os.Exit(1)
+		}
+		log.Println("Seed data complete")
+		return
+	}
+
+	service := Products{db: db}
+
 	// =========================================================================
 	// Start API Service
 
 	api := http.Server{
 		Addr:         "localhost:8000",
-		Handler:      http.HandlerFunc(ListProducts),
+		Handler:      http.HandlerFunc(service.List),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 	}
@@ -101,16 +125,30 @@ func openDB() (*sqlx.DB, error) {
 
 // Product is an item we sell.
 type Product struct {
-	Name     string `json:"name"`
-	Cost     int    `json:"cost"`
-	Quantity int    `json:"quantity"`
+	ID          string    `db:"product_id" json:"id"`
+	Name        string    `db:"name" json:"name"`
+	Cost        int       `db:"cost" json:"cost"`
+	Quantity    int       `db:"quantity" json:"quantity"`
+	DateCreated time.Time `db:"date_created" json:"date_created"`
+	DateUpdated time.Time `db:"date_updated" json:"date_updated"`
 }
 
-// ListProducts is an HTTP Handler for returning a list of Products.
-func ListProducts(w http.ResponseWriter, r *http.Request) {
-	list := []Product{
-		{Name: "Comic Books", Cost: 50, Quantity: 42},
-		{Name: "McDonalds Toys", Cost: 75, Quantity: 120},
+// Products holds business logic related to Products.
+type Products struct {
+	db *sqlx.DB
+}
+
+// List gets all Products from the database then encodes them in a
+// response to the client.
+func (p *Products) List(w http.ResponseWriter, r *http.Request) {
+	list := []Product{}
+
+	const q = `SELECT * FROM products`
+
+	if err := p.db.Select(&list, q); err != nil {
+		log.Printf("error: selecting products: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	data, err := json.Marshal(list)
