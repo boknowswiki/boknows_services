@@ -22,7 +22,7 @@ type Products struct {
 // List gets all Products from the database then encodes them in a
 // response to the client.
 func (p *Products) List(w http.ResponseWriter, r *http.Request) error {
-	list, err := product.List(p.DB)
+	list, err := product.List(r.Context(), p.DB)
 
 	if err != nil {
 		return errors.Wrap(err, "getting product list")
@@ -37,7 +37,7 @@ func (p *Products) Retrieve(w http.ResponseWriter, r *http.Request) error {
 
 	id := chi.URLParam(r, "id")
 
-	prod, err := product.Retrieve(p.DB, id)
+	prod, err := product.Retrieve(r.Context(), p.DB, id)
 
 	if err != nil {
 		switch err {
@@ -61,7 +61,7 @@ func (p *Products) Create(w http.ResponseWriter, r *http.Request) error {
 		return errors.Wrap(err, "decoding product")
 	}
 
-	prod, err := product.Create(p.DB, np, time.Now())
+	prod, err := product.Create(r.Context(), p.DB, np, time.Now())
 	if err != nil {
 		return errors.Wrap(err, "creating product")
 	}
