@@ -31,13 +31,13 @@ func (p *Products) List(w http.ResponseWriter, r *http.Request) error {
 	return web.Respond(w, list, http.StatusOK)
 }
 
-// Retrive gets a single Product from the database then encodes them in a
+// Retrieve gets a single Product from the database then encodes them in a
 // response to the client.
-func (p *Products) Retrive(w http.ResponseWriter, r *http.Request) error {
+func (p *Products) Retrieve(w http.ResponseWriter, r *http.Request) error {
 
 	id := chi.URLParam(r, "id")
 
-	prod, err := product.Retrive(p.DB, id)
+	prod, err := product.Retrieve(p.DB, id)
 
 	if err != nil {
 		switch err {

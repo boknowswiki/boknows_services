@@ -31,8 +31,8 @@ func List(db *sqlx.DB) ([]Product, error) {
 	return products, nil
 }
 
-// Retrive gets a single Product from the database.
-func Retrive(db *sqlx.DB, id string) (*Product, error) {
+// Retrieve gets a single Product from the database.
+func Retrieve(db *sqlx.DB, id string) (*Product, error) {
 	if _, err := uuid.Parse(id); err != nil {
 		return nil, ErrInvalidID
 	}
