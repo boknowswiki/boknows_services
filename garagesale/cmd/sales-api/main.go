@@ -11,6 +11,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 
 	"github.com/boknowswiki/boknows_services/garagesale/cmd/sales-api/internal/handlers"
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/conf"
@@ -18,7 +19,11 @@ import (
 )
 
 func main() {
-
+	if err := run(); err != nil {
+		log.Fatalf("error: run get : %v", err)
+	}
+}
+func run() error {
 	// Configuration
 
 	var cfg struct {
@@ -41,19 +46,19 @@ func main() {
 		if err == conf.ErrHelpWanted {
 			usage, err := conf.Usage("SALES", &cfg)
 			if err != nil {
-				log.Fatalf("error : generating config usage : %v", err)
+				return errors.Wrap(err, "generating config usage")
 			}
 			fmt.Println(usage)
-			return
+			return nil
 		}
-		log.Fatalf("error: parsing config: %s", err)
+		return errors.Wrap(err, "parsing config")
 	}
 
 	cfg.DB.DisableTLS = true
 
 	out, err := conf.String(&cfg)
 	if err != nil {
-		log.Fatalf("error : generating config for output : %v", err)
+		return errors.Wrap(err, "generating config for output")
 	}
 	log.Printf("main : Config :\n%v\n", out)
 
@@ -71,7 +76,7 @@ func main() {
 		DisableTLS: cfg.DB.DisableTLS,
 	})
 	if err != nil {
-		log.Fatalf("error: connecting to db: %s", err)
+		errors.Wrap(err, "connecting to db")
 	}
 	defer db.Close()
 
@@ -108,7 +113,7 @@ func main() {
 	// Blocking main and waiting for shutdown.
 	select {
 	case err := <-serverErrors:
-		log.Fatalf("error: listening and serving: %s", err)
+		return errors.Wrap(err, "listening and serving")
 
 	case <-shutdown:
 		log.Println("main : Start shutdown")
@@ -125,7 +130,9 @@ func main() {
 		}
 
 		if err != nil {
-			log.Fatalf("main : could not stop server gracefully : %v", err)
+			return errors.Wrap(err, "main : could not stop server gracefully")
 		}
 	}
+
+	return nil
 }

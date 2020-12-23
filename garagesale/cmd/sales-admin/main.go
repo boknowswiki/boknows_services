@@ -8,10 +8,16 @@ import (
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/conf"
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/database"
 	"github.com/boknowswiki/boknows_services/garagesale/internal/schema"
+	"github.com/pkg/errors"
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("run failed %v", err)
+	}
+}
 
+func run() error {
 	// =========================================================================
 	// Configuration
 
@@ -30,12 +36,12 @@ func main() {
 		if err == conf.ErrHelpWanted {
 			usage, err := conf.Usage("SALES", &cfg)
 			if err != nil {
-				log.Fatalf("main : generating usage : %v", err)
+				return errors.Wrap(err, "main : generating usage")
 			}
 			fmt.Println(usage)
-			return
+			return nil
 		}
-		log.Fatalf("error: parsing config: %s", err)
+		return errors.Wrap(err, "parsing config")
 	}
 
 	// Initialize dependencies.
@@ -47,7 +53,7 @@ func main() {
 		DisableTLS: cfg.DB.DisableTLS,
 	})
 	if err != nil {
-		log.Fatalf("error: connecting to db: %s", err)
+		return errors.Wrap(err, "connecting to db")
 	}
 	defer db.Close()
 
@@ -58,7 +64,7 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("Migrations complete")
-		return
+		return nil
 
 	case "seed":
 		if err := schema.Seed(db); err != nil {
@@ -66,6 +72,8 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("Seed data complete")
-		return
+		return nil
 	}
+
+	return nil
 }
