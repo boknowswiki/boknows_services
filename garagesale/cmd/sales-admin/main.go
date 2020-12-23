@@ -44,6 +44,8 @@ func run() error {
 		return errors.Wrap(err, "parsing config")
 	}
 
+	cfg.DB.DisableTLS = true
+
 	// Initialize dependencies.
 	db, err := database.Open(database.Config{
 		User:       cfg.DB.User,
