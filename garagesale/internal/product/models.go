@@ -11,3 +11,10 @@ type Product struct {
 	DateCreated time.Time `db:"date_created" json:"date_created"`
 	DateUpdated time.Time `db:"date_updated" json:"date_updated"`
 }
+
+// NewProduct get new product from user.
+type NewProduct struct {
+	Name     string `db:"name" json:"name"`
+	Cost     int    `db:"cost" json:"cost"`
+	Quantity int    `db:"quantity" json:"quantity"`
+}
