@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/web"
 	"github.com/boknowswiki/boknows_services/garagesale/internal/product"
 )
 
@@ -29,16 +29,7 @@ func (p *Products) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(list)
-	if err != nil {
-		p.Log.Println("error marshalling result", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write(data); err != nil {
+	if err := web.Respond(w, list, http.StatusOK); err != nil {
 		p.Log.Println("error writing result", err)
 	}
 }
@@ -57,16 +48,7 @@ func (p *Products) Retrive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(product)
-	if err != nil {
-		p.Log.Println("error marshalling result", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write(data); err != nil {
+	if err := web.Respond(w, product, http.StatusOK); err != nil {
 		p.Log.Println("error writing result", err)
 	}
 }
@@ -75,7 +57,7 @@ func (p *Products) Retrive(w http.ResponseWriter, r *http.Request) {
 // product with generated fields is sent back in the response.
 func (p *Products) Create(w http.ResponseWriter, r *http.Request) {
 	var np product.NewProduct
-	if err := json.NewDecoder(r.Body).Decode(&np); err != nil {
+	if err := web.Decode(r, &np); err != nil {
 		p.Log.Println("decoding product", "error", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -88,16 +70,7 @@ func (p *Products) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(prod)
-	if err != nil {
-		p.Log.Println("error marshalling result", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusCreated)
-	if _, err := w.Write(data); err != nil {
+	if err := web.Respond(w, prod, http.StatusCreated); err != nil {
 		p.Log.Println("error writing result", err)
 	}
 }
