@@ -25,6 +25,7 @@ func main() {
 }
 func run() error {
 	// Configuration
+	log := log.New(os.Stdout, "SALES : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 
 	var cfg struct {
 		Web struct {
@@ -80,14 +81,12 @@ func run() error {
 	}
 	defer db.Close()
 
-	service := handlers.Products{DB: db}
-
 	// =========================================================================
 	// Start API Service
 
 	api := http.Server{
 		Addr:         cfg.Web.Address,
-		Handler:      http.HandlerFunc(service.List),
+		Handler:      handlers.API(db, log),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,
 	}
