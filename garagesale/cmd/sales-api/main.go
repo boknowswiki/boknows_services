@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof" //Register the /debug/pprof handlers.
 	"os"
 	"os/signal"
 	"syscall"
@@ -30,6 +31,7 @@ func run() error {
 	var cfg struct {
 		Web struct {
 			Address         string        `conf:"default:localhost:8000"`
+			Debug           string        `conf:"default:localhost:8888"`
 			ReadTimeout     time.Duration `conf:"default:5s"`
 			WriteTimeout    time.Duration `conf:"default:5s"`
 			ShutdownTimeout time.Duration `conf:"default:5s"`
@@ -62,6 +64,17 @@ func run() error {
 		return errors.Wrap(err, "generating config for output")
 	}
 	log.Printf("main : Config :\n%v\n", out)
+
+	// =========================================================================    // Start Debug Service
+	//
+	// /debug/pprof - Added to the default mux by importing the net/http/pprof package.
+	//
+	// Not concerned with shutting this down when the application is shutdown.
+	go func() {
+		log.Println("debug service listening on", cfg.Web.Debug)
+		err := http.ListenAndServe(cfg.Web.Debug, http.DefaultServeMux)
+		log.Println("debug service closed", err)
+	}()
 
 	// =========================================================================
 	// App Starting
