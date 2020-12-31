@@ -1,0 +1,44 @@
+apiVersion: apps/v1                                                             
+kind: StatefulSet
+metadata:
+  name: mongodb-standalone
+spec:
+  serviceName: mongodb
+  replicas: {{ .Values.image.mongo.replicas }}
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+        selector: mongodb-standalone
+    spec:
+      containers:
+      - name: mongodb-standalone
+        image: {{ .Values.image.mongo.repository }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-svc
+  labels:
+    app: mongodb-svc
+spec:
+  selector:
+    app: mongodb
+  ports:
+    - protocol: {{ .Values.service.mongo.ports.protocol }}
+      port: {{ .Values.service.mongo.ports.port }}
+      targetPort: {{ .Values.service.mongo.ports.port }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-configmap
+data:
+  database_url: mongodb-svc
+
+
