@@ -10,7 +10,7 @@ import (
 )
 
 // Handler is the signature used by all application handlers in this service.
-type Handler func(http.ResponseWriter, *http.Request) error
+type Handler func(context.Context, http.ResponseWriter, *http.Request) error
 
 // ctxKey represents the type of value for the context key.
 type ctxKey int
@@ -54,9 +54,8 @@ func (a *App) Handle(method, url string, h Handler) {
 			Start: time.Now(),
 		}
 		ctx := context.WithValue(r.Context(), KeyValues, &v)
-		r = r.WithContext(ctx)
 
-		err := h(w, r)
+		err := h(ctx, w, r)
 		if err != nil {
 			a.log.Printf("Unhandled error %+v", err)
 		}
