@@ -18,6 +18,11 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 
+	"contrib.go.opencensus.io/exporter/zipkin"
+	openzipkin "github.com/openzipkin/zipkin-go"
+	zipkinHTTP "github.com/openzipkin/zipkin-go/reporter/http"
+	"go.opencensus.io/trace"
+
 	"github.com/boknowswiki/boknows_services/garagesale/cmd/sales-api/internal/handlers"
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/auth"
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/conf"
@@ -53,6 +58,11 @@ func run() error {
 			PrivateKeyFile string `conf:"default:private.pem"`
 			Algorithm      string `conf:"default:RS256"`
 		}
+		Trace struct {
+			URL         string  `conf:"default:http://localhost:9411/api/v2/spans"`
+			Service     string  `conf:"default:sales-api"`
+			Probability float64 `conf:"default:1"`
+		}
 	}
 
 	if err := conf.Parse(os.Args[1:], "SALES", &cfg); err != nil {
@@ -86,6 +96,20 @@ func run() error {
 	if err != nil {
 		return errors.Wrap(err, "constructing authenticator")
 	}
+
+	// =========================================================================
+	// Start Tracing Support
+
+	closer, err := registerTracer(
+		cfg.Trace.Service,
+		cfg.Web.Address,
+		cfg.Trace.URL,
+		cfg.Trace.Probability,
+	)
+	if err != nil {
+		return err
+	}
+	defer closer()
 
 	// =========================================================================    // Start Debug Service
 	//
@@ -186,4 +210,19 @@ func createAuth(privateKeyFile, keyID, algorithm string) (*auth.Authenticator, e
 	public := auth.NewSimpleKeyLookupFunc(keyID, key.Public().(*rsa.PublicKey))
 
 	return auth.NewAuthenticator(key, keyID, algorithm, public)
+}
+
+func registerTracer(service, httpAddr, traceURL string, probability float64) (func() error, error) {
+	localEndpoint, err := openzipkin.NewEndpoint(service, httpAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating the local zipkinEndpoint")
+	}
+	reporter := zipkinHTTP.NewReporter(traceURL)
+
+	trace.RegisterExporter(zipkin.NewExporter(reporter, localEndpoint))
+	trace.ApplyConfig(trace.Config{
+		DefaultSampler: trace.ProbabilitySampler(probability),
+	})
+
+	return reporter.Close, nil
 }

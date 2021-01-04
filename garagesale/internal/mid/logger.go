@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/web"
+	"go.opencensus.io/trace"
 )
 
 // Logger writes some information about the request to the logs in the
@@ -19,9 +20,12 @@ func Logger(log *log.Logger) web.Middleware {
 
 		// Create the handler that will be attached in the middleware chain.
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+			ctx, span := trace.StartSpan(ctx, "internal.mid.logger")
+			defer span.End()
+
 			v, ok := ctx.Value(web.KeyValues).(*web.Values)
 			if !ok {
-				return errors.New("web value missing from context")
+				return errors.New("logger web value missing from context")
 			}
 
 			err := before(ctx, w, r)

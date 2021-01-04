@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
 
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/auth"
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/web"
@@ -24,6 +25,9 @@ type Products struct {
 // List gets all Products from the database then encodes them in a
 // response to the client.
 func (p *Products) List(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.product.list")
+	defer span.End()
+
 	list, err := product.List(ctx, p.DB)
 
 	if err != nil {

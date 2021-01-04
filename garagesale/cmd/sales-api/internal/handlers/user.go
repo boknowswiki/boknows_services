@@ -9,6 +9,7 @@ import (
 	"github.com/boknowswiki/boknows_services/garagesale/internal/user"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
 )
 
 // Users holds handlers for dealing with user.
@@ -21,9 +22,12 @@ type Users struct {
 // an email and password for the request using HTTP Basic Auth. The user will
 // be identified by email and authenticated by their password.
 func (u *Users) Token(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	ctx, span := trace.StartSpan(ctx, "handlers.user.token")
+	defer span.End()
+
 	v, ok := ctx.Value(web.KeyValues).(*web.Values)
 	if !ok {
-		return errors.New("web value missing from context")
+		return errors.New("user web value missing from context")
 	}
 
 	email, pass, ok := r.BasicAuth()

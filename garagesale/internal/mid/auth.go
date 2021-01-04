@@ -8,6 +8,7 @@ import (
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/auth"
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/web"
 	"github.com/pkg/errors"
+	"go.opencensus.io/trace"
 )
 
 // ErrForbidden is returned when an authenticated user does not have a
@@ -25,6 +26,9 @@ func Authenticate(authenticator *auth.Authenticator) web.Middleware {
 
 		// Wrap this handler around the next one provided.
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+			ctx, span := trace.StartSpan(ctx, "internal.mid.auth")
+			defer span.End()
+
 			// Parse the authorization header. Expected header is of
 			// the format `Bearer <token>`.
 			parts := strings.Split(r.Header.Get("Authorization"), " ")
@@ -33,7 +37,10 @@ func Authenticate(authenticator *auth.Authenticator) web.Middleware {
 				return web.NewRequestError(err, http.StatusUnauthorized)
 			}
 
+			// Start a span to measure just the time spent in ParseClaims.
+			_, span = trace.StartSpan(ctx, "auth.ParseClaims")
 			claims, err := authenticator.ParseClaims(parts[1])
+			span.End()
 			if err != nil {
 				return web.NewRequestError(err, http.StatusUnauthorized)
 			}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	"go.opencensus.io/trace"
 )
 
 // Handler is the signature used by all application handlers in this service.
@@ -51,12 +52,16 @@ func (a *App) Handle(method, url string, h Handler, mw ...Middleware) {
 	h = wrapMiddleware(a.mw, h)
 
 	fn := func(w http.ResponseWriter, r *http.Request) {
+
+		ctx, span := trace.StartSpan(r.Context(), "internal.platform.web")
+		defer span.End()
+
 		// Create a Values struct to record state for the request. Store the
 		// address in the request's context so it is sent down the call chain.
 		v := Values{
 			Start: time.Now(),
 		}
-		ctx := context.WithValue(r.Context(), KeyValues, &v)
+		ctx = context.WithValue(ctx, KeyValues, &v)
 
 		err := h(ctx, w, r)
 		if err != nil {
