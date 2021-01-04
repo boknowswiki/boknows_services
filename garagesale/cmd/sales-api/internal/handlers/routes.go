@@ -3,6 +3,7 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/boknowswiki/boknows_services/garagesale/internal/mid"
 	"github.com/boknowswiki/boknows_services/garagesale/internal/platform/auth"
@@ -11,9 +12,9 @@ import (
 )
 
 // API constructs an http.Handler with all application routes defined.
-func API(db *sqlx.DB, log *log.Logger, authenticator *auth.Authenticator) http.Handler {
+func API(shutdown chan os.Signal, db *sqlx.DB, log *log.Logger, authenticator *auth.Authenticator) http.Handler {
 
-	app := web.NewApp(log, mid.Logger(log), mid.Errors(log), mid.Metrics(), mid.Panics(log))
+	app := web.NewApp(shutdown, log, mid.Logger(log), mid.Errors(log), mid.Metrics(), mid.Panics(log))
 
 	{
 		c := Check{db: db}
