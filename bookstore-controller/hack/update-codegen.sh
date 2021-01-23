@@ -30,7 +30,7 @@ echo $CODEGEN_PKG
 bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/boknowswiki/boknows_services/bookstore-controller/pkg/generated github.com/boknowswiki/boknows_services/bookstore-controller/pkg/apis \
   bookcontroller:v1 \
-  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../.." \
+  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../../.." \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
 
 # To use your own boilerplate text append:
