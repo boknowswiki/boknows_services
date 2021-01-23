@@ -1,0 +1,9 @@
+apiVersion: books.bookstore.com/v1
+kind: Book
+metadata:
+  name: book-sample
+spec:
+  name: book2_name
+  author: book2_author
+  isbn: book2_isbn
+  genre: book2_genre

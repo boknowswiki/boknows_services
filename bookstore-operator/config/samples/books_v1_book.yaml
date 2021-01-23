@@ -1,0 +1,7 @@
+apiVersion: books.bookstore.com/v1
+kind: Book
+metadata:
+  name: book-sample
+spec:
+  # Add fields here
+  foo: bar

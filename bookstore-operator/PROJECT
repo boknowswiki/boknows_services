@@ -1,0 +1,11 @@
+domain: bookstore.com
+layout: go.kubebuilder.io/v2
+projectName: bookstore-operator
+repo: www-github.cisco.com/bota/maglev-bootcamp/track-controlplane/week-3/bookstore-operator
+resources:
+- group: books
+  kind: Book
+  version: v1
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}

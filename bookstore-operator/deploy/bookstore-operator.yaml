@@ -1,0 +1,111 @@
+# only for bookstore app, need to work with minikube_prom.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstore-operator-deployment
+  #labels:
+  #  app: bookstore
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookstore-operator
+  template:
+    metadata:
+      labels:
+        app: bookstore-operator
+    spec:
+      containers:
+      - name: bookstore-operator
+        image: boknowswiki/bookstore:v3
+        #ports:
+        #  - containerPort: 8888
+        #    name: web
+        #  - containerPort: 6666
+        #  - containerPort: 2112
+        #    name: metrics
+        imagePullPolicy: Always
+        securityContext:
+          privileged: true
+        #readinessProbe:
+        #  tcpSocket:
+        #    port: 8888
+        #  initialDelaySeconds: 3
+        #  periodSeconds: 10
+        #livenessProbe:
+        #  httpGet:
+        #    path: /health
+        #    port: 8888
+        #  initialDelaySeconds: 5
+        #  periodSeconds: 5
+        env:
+          - name: CONFIG_BOOKSTORE_SERVER
+            valueFrom:
+              configMapKeyRef:
+                name: bookstore-configmap
+                key: bookstore_service_url
+---                 
+apiVersion: v1   
+kind: ConfigMap  
+metadata:           
+  name: bookstore-configmap
+data:               
+  bookstore_service_url: bookstore-service
+#---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: bookstore-service
+#  labels:
+#    app: bookstore-service
+#spec:
+#  selector:
+#    app: bookstore
+#  type: LoadBalancer
+#  ports:
+#    - protocol: TCP
+#      port: 8888
+#      targetPort: 8888
+#      name: web
+#---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: bookstore-service-debug
+#spec:
+#  selector:
+#    app: bookstore
+#  type: LoadBalancer
+#  ports:
+#    - protocol: TCP
+#      port: 6666
+#      targetPort: 6666
+#---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: bookstore-service-metrics
+#  labels:
+#    app: bookstore-service-metrics
+#spec:
+#  selector:
+#    app: bookstore
+#  #type: LoadBalancer
+#  ports:
+#    - name: metrics
+#      protocol: TCP
+#      port: 2112
+#      #targetPort: 2112
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:    
+  name: service-bind
+roleRef:     
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:    
+- kind: ServiceAccount
+  name: default
+  namespace: default
