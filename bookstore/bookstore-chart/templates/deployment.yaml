@@ -23,6 +23,17 @@ spec:
         imagePullPolicy: {{ .Values.image.bookstore.pullPolicy }}
         securityContext:
           privileged: true
+        readinessProbe:
+          tcpSocket:
+            port: 8888
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8888
+          initialDelaySeconds: 5
+          periodSeconds: 5
         env:
           - name: CONFIG_MONGODB_SERVER
             valueFrom:
@@ -57,17 +68,16 @@ spec:
       port: {{ .Values.service.bookstoreDebug.ports.port }}
       targetPort: {{ .Values.service.bookstoreDebug.ports.port }}
 
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:    
-  name: service-bind
-roleRef:     
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:    
-- kind: ServiceAccount
-  name: default
-  namespace: default
-  
+#---
+#apiVersion: rbac.authorization.k8s.io/v1
+#kind: ClusterRoleBinding
+#metadata:    
+#  name: service-bind
+#roleRef:     
+#  apiGroup: rbac.authorization.k8s.io
+#  kind: ClusterRole
+#  name: cluster-admin
+#subjects:    
+#- kind: ServiceAccount
+#  name: default
+#  namespace: default

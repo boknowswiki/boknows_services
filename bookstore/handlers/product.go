@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
+
+	//"github.com/prometheus/client_golang/prometheus"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	en "github.com/go-playground/locales/en"
@@ -20,14 +22,13 @@ import (
 	"www-github.cisco.com/bota/maglev-bootcamp/track-controlplane/week-1/bookstore/product"
 )
 
-// Products holds business logic related to Products.
+// Products holds the logic related to Products.
 type Products struct {
 	DB  *mongo.Client
 	Log *log.Logger
 }
 
-// List gets all Products from the database then encodes them in a
-// response to the client.
+// List gets all Products from the database.
 func (p *Products) List(w http.ResponseWriter, r *http.Request) error {
 	list, err := product.List(r.Context(), p.DB)
 
@@ -38,8 +39,7 @@ func (p *Products) List(w http.ResponseWriter, r *http.Request) error {
 	return Respond(w, list, http.StatusOK)
 }
 
-// Retrieve gets a single Product from the database then encodes them in a
-// response to the client.
+// Retrieve gets a single Product from the database.
 func (p *Products) Retrieve(w http.ResponseWriter, r *http.Request) error {
 
 	id := chi.URLParam(r, "id")
@@ -67,8 +67,6 @@ func (p *Products) Create(w http.ResponseWriter, r *http.Request) error {
 	if err := Decode(r, &np); err != nil {
 		return errors.Wrap(err, "decoding product")
 	}
-
-	//p.Log.Printf("np %#v", np)
 
 	prod, err := product.Create(r.Context(), p.DB, np, time.Now())
 	if err != nil {

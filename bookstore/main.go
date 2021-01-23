@@ -2,43 +2,28 @@ package main
 
 import (
 	"context"
-	"os"
-	"os/signal"
-	"syscall"
-
-	//"encoding/hex"
-	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 	"time"
 
 	_ "expvar"         // Register the expvar handlers
 	_ "net/http/pprof" //Register the /debug/pprof handlers.
 
-	"github.com/ericchiang/k8s"
-	corev1 "github.com/ericchiang/k8s/apis/core/v1"
 	"github.com/pkg/errors"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	//"go.mongodb.org/mongo-driver/bson/primitive"
-	//"www-github.cisco.com/bota/maglev-bootcamp/track-controlplane/week-1/bookstore/conf"
 	"www-github.cisco.com/bota/maglev-bootcamp/track-controlplane/week-1/bookstore/handlers"
+	"www-github.cisco.com/bota/maglev-bootcamp/track-controlplane/week-1/bookstore/product"
 )
-
-// People ...
-type People struct {
-	First string
-	Last  string
-}
-
-// Trainer ...
-type Trainer struct {
-	Name string
-	Age  int
-	City string
-}
 
 func main() {
 	log.Println(os.Args)
@@ -50,10 +35,12 @@ func main() {
 func run() error {
 	log.Println("start main")
 	defer log.Println("end main")
+
 	var url string
 	var addr string
 	var debugAddr string
 
+	// Standalone is for running without minikube, with docker-compose.
 	standalone := false
 
 	if len(os.Args) > 1 {
@@ -67,65 +54,86 @@ func run() error {
 
 	log := log.New(os.Stdout, "Bookstore : ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 
+	// For minikube case to get mongodb url.
 	if standalone != true {
-		kclient, err := k8s.NewInClusterClient()
-		if err != nil {
-			log.Fatal(err)
+		// Get mongodb service url from environments.
+		mongoSVC := os.Getenv("MONGODB_SVC_PORT_27017_TCP")
+		if mongoSVC == "" {
+			err := errors.New("failed to get mongo service")
+			return err
+
 		}
+		mongoSVC = strings.Replace(mongoSVC, "tcp", "mongodb", -1)
+		log.Println("mongo url: ", mongoSVC)
 
-		var nodes corev1.NodeList
-		if err := kclient.List(context.Background(), "", &nodes); err != nil {
-			log.Fatal(err)
-		}
-		for _, node := range nodes.Items {
-			fmt.Printf("name=%q schedulable=%t\n", *node.Metadata.Name, !*node.Spec.Unschedulable)
-		}
+		// Below gets the mongodb service url from configmap.
+		/*
+			kclient, err := k8s.NewInClusterClient()
+			if err != nil {
+				log.Fatal(err)
+			}
 
-		var configMap corev1.ConfigMap
-		err = kclient.Get(context.Background(), "default", "mongodb-configmap", &configMap)
-		if err != nil {
-			log.Fatalf("error failed to get configMap %v", err)
-		}
+			var nodes corev1.NodeList
+			if err := kclient.List(context.Background(), "", &nodes); err != nil {
+				log.Fatal(err)
+			}
+			for _, node := range nodes.Items {
+				fmt.Printf("name=%q schedulable=%t\n", *node.Metadata.Name, !*node.Spec.Unschedulable)
+			}
 
-		log.Printf("get configMap %#v", configMap)
+			var configMap corev1.ConfigMap
+			err = kclient.Get(context.Background(), "default", "mongodb-configmap", &configMap)
+			if err != nil {
+				log.Fatalf("error failed to get configMap %v", err)
+			}
 
-		var mongodbSVC corev1.Service
-		err = kclient.Get(context.Background(), "default", "mongodb-svc", &mongodbSVC)
-		if err != nil {
-			log.Fatalf("error failed to get svc %v", err)
-		}
+			log.Printf("get configMap %#v", configMap)
 
-		//ip := *mongodbSVC.Spec.ClusterIP
-		log.Printf("svc is %v", *mongodbSVC.Spec.ClusterIP)
+			var mongodbSVC corev1.Service
+			err = kclient.Get(context.Background(), "default", "mongodb-svc", &mongodbSVC)
+			if err != nil {
+				log.Fatalf("error failed to get svc %v", err)
+			}
 
-		//a, _ := hex.DecodeString(ip)
-		//fmt.Printf("%v.%v.%v.%v", a[3], a[2], a[1], a[0])
+			//log.Printf("svc is %v", *mongodbSVC.Spec.ClusterIP)
 
-		url = fmt.Sprintf("mongodb://%s:27017", *mongodbSVC.Spec.ClusterIP)
+			url = fmt.Sprintf("mongodb://%s:27017", *mongodbSVC.Spec.ClusterIP)
+		*/
+		url = mongoSVC
 		addr = "0.0.0.0:8888"
-		debugAddr = "0.0.0.0:6666"
+		debugAddr = "0.0.0.0:6060"
 	} else {
 		url = "mongodb://localhost:27017"
 		addr = "127.0.0.1:8888"
-		debugAddr = "127.0.0.1:6666"
+		debugAddr = "127.0.0.1:6060"
 	}
+
 	log.Printf("getting new mongo client with url %v", url)
 	mclient, err := mongo.NewClient(options.Client().ApplyURI(url))
 	if err != nil {
-		log.Fatalf("error: failed to create client: %s", err)
+		err = errors.Wrap(err, "failed to create client")
+		return err
 	}
 
-	log.Println("got new mongo client")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	err = mclient.Connect(ctx)
 
 	defer func() {
 		if err = mclient.Disconnect(ctx); err != nil {
-			panic(err)
+			log.Printf("mongodb disconnect failed: %v", err)
 		}
+		cancel()
 	}()
-	log.Println("client connet")
+
+	// Start metrics
+	go func() {
+		bc := product.NewBookCollector(mclient)
+		prometheus.MustRegister(bc)
+
+		log.Println("prometheus metric on 2112")
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":2112", nil)
+	}()
 
 	// Start debug Service
 	go func() {
@@ -143,6 +151,7 @@ func run() error {
 		WriteTimeout: time.Second * 5,
 	}
 
+	// Make a channel to get server errors.
 	serverErrors := make(chan error, 1)
 
 	go func() {

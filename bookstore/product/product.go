@@ -8,16 +8,15 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	//"www-github.cisco.com/bota/maglev-bootcamp/track-controlplane/week-1/bookstore/product"
 )
 
-// Product is an item we sell.
+// Product is the book item.
 type Product struct {
 	ID          string    `db:"product_id" json:"id"`
 	Name        string    `db:"name" json:"name"`
 	Author      string    `db:"author" json:"author"`
 	ISBN        string    `db:"isbn" json:"isbn"`
-	Genre       string    `db:"genre" json:"genre`
+	Genre       string    `db:"genre" json:"genre"`
 	DateCreated time.Time `db:"datecreated" json:"date_created"`
 	DateUpdated time.Time `db:"dateupdated" json:"date_updated"`
 }
@@ -31,16 +30,12 @@ type NewProduct struct {
 }
 
 // UpdateProduct defines what information may be provided to modify an
-// existing Product. All fields are optional so clients can send just the
-// fields they want changed. It uses pointer fields so we can differentiate
-// between a field that was not provided and a field that was provided as
-// explicitly blank. Normally we do not want to use pointers to basic types but
-// we make exceptions around marshalling/unmarshalling.
+// existing Product.
 type UpdateProduct struct {
 	Name   *string `json:"name"`
 	Author *string `json:"author"`
 	ISBN   *string `json:"isbn"`
-	Genre  *string `json:"genre`
+	Genre  *string `json:"genre"`
 }
 
 // Predefined errors identify expected failure conditions.

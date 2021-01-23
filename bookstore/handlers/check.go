@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// Check provides support for orchestration health checks.
+// Check is for health check.
 type Check struct {
 	db *mongo.Client
 }

@@ -28,9 +28,6 @@ func API(client *mongo.Client, log *log.Logger) http.Handler {
 	app.Handle(http.MethodPut, "/books/{id}", p.Update)
 	app.Handle(http.MethodDelete, "/books/{id}", p.Delete)
 
-	//app.Handle(http.MethodPost, "/v1/products/{id}/sales", p.AddSale)
-	//app.Handle(http.MethodGet, "/v1/products/{id}/sales", p.ListSales)
-
 	return app
 }
 
