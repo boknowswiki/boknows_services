@@ -70,8 +70,28 @@ type BookReconciler struct {
 	SVC    string
 }
 
-// NameToID is for deleting a crd to find the book.ID.
-var NameToID = make(map[string]string)
+// BooksFinalizerLabel defines the finalizer.
+var BooksFinalizerLabel = "books.finalizer.bookstore.com"
+
+// Helper functions to check and remove string from a slice of strings.
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func removeString(slice []string, s string) (result []string) {
+	for _, item := range slice {
+		if item == s {
+			continue
+		}
+		result = append(result, item)
+	}
+	return
+}
 
 // +kubebuilder:rbac:groups=books.bookstore.com,resources=books,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=books.bookstore.com,resources=books/status,verbs=get;update;patch
@@ -93,16 +113,6 @@ func (r *BookReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
 			log.Println("book resource not found. Ignoring since object must be deleted")
-			log.Printf("Will delete the book %s: %s accordingly.", req.Name, NameToID[req.Name])
-			err = r.deleteBook(NameToID[req.Name])
-			if err != nil {
-				log.Printf("delete book %s: %s failed %s", req.Name, NameToID[req.Name], err)
-			}
-
-			// Make sure only remove the key once.
-			if _, ok := NameToID[req.Name]; ok {
-				delete(NameToID, req.Name)
-			}
 			return ctrl.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -110,8 +120,41 @@ func (r *BookReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, err
 	}
 
+	//log.Printf("book %#v", book)
+
+	if book.ObjectMeta.DeletionTimestamp.IsZero() {
+		// The object is not being deleted, so if it does not have our finalizer,
+		// then lets add the finalizer and update the object. This is equivalent
+		// registering our finalizer.
+		if !containsString(book.ObjectMeta.Finalizers, BooksFinalizerLabel) {
+			book.ObjectMeta.Finalizers = append(book.ObjectMeta.Finalizers, BooksFinalizerLabel)
+			if err := r.Update(ctx, book); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+	} else {
+		// The object is being deleted
+		if containsString(book.ObjectMeta.Finalizers, BooksFinalizerLabel) {
+			// our finalizer is present, so lets handle any external dependency
+			// in this case to delete the book.
+			log.Printf("deleting book %v", book)
+			err = r.deleteBook(book.Status.ID)
+			if err != nil {
+				log.Printf("delete book %s: %s failed %s", req.Name, book.Status.ID, err)
+			}
+		}
+
+		// remove our finalizer from the list and update it.
+		book.ObjectMeta.Finalizers = removeString(book.ObjectMeta.Finalizers, BooksFinalizerLabel)
+		if err := r.Update(ctx, book); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	// New CRD, call create book.
 	if book.Status.ID == "" {
+		log.Println("creating book: ", book.Spec.Name)
 		createStatus, err := r.createBook(book)
 		if err != nil {
 			log.Printf("create %#v failed: %v", book.Spec, err)
@@ -123,11 +166,10 @@ func (r *BookReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			log.Println("update failed: ", err)
 			return ctrl.Result{}, err
 		}
-		NameToID[req.Name] = book.Status.ID
 	} else { //Existing CRD, call get book or update book.
 		// If any information changed, we need to update it.
 		if isUpdated(book) {
-			//log.Printf("Need to update book %#v", book)
+			log.Printf("Need to update book %#v", book)
 			updatestatus, err := r.updateBook(book)
 			if err != nil {
 				log.Printf("update %#v failed: %v", book.Spec, err)
@@ -139,8 +181,6 @@ func (r *BookReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				log.Println("update failed: ", err)
 				return ctrl.Result{}, err
 			}
-			NameToID[req.Name] = book.Status.ID
-
 		} else {
 			gBook, err := r.getBook(book)
 			//log.Printf("get book %#v", gBook)
@@ -157,7 +197,6 @@ func (r *BookReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 					log.Println("update failed: ", err)
 					return ctrl.Result{}, err
 				}
-				NameToID[req.Name] = book.Status.ID
 			}
 		}
 	}
