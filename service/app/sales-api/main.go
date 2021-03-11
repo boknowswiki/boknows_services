@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ardanlabs/conf"
+	"github.com/boknowswiki/boknows_services/service/app/sales-api/handlers"
 	"github.com/pkg/errors"
 )
 
@@ -115,8 +116,8 @@ func run(log *log.Logger) error {
 	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
 
 	api := http.Server{
-		Addr: cfg.Web.APIHost,
-		//Handler:      handlers.API(build, shutdown, log, auth, db),
+		Addr:         cfg.Web.APIHost,
+		Handler:      handlers.API(build, shutdown, log),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,
 	}
