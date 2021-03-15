@@ -43,6 +43,7 @@ func NewApp(shutdown chan os.Signal, mw ...Middleware) *App {
 	app := App{
 		ContextMux: httptreemux.NewContextMux(),
 		shutdown:   shutdown,
+		mw:         mw,
 	}
 
 	return &app

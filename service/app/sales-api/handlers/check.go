@@ -18,9 +18,7 @@ func (c check) readiness(ctx context.Context, w http.ResponseWriter, r *http.Req
 	}{
 		Status: "OK",
 	}
-	log.Println(r, status)
 
-	//return json.NewEncoder(w).Encode(status)
 	return web.Respond(ctx, w, status, http.StatusOK)
 
 }
