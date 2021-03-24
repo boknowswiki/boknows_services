@@ -2,19 +2,21 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 
+	"github.com/boknowswiki/boknows_services/service/foundation/database"
 	"github.com/boknowswiki/boknows_services/service/foundation/web"
+	"github.com/jmoiron/sqlx"
 )
 
-type check struct {
+type checkGroup struct {
 	build string
-	log   *log.Logger
+	//log   *log.Logger
+	db *sqlx.DB
 }
 
-func (c check) readiness(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (cg checkGroup) readiness(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 
 	/*
 		if n := rand.Intn(100); n%2 == 0 {
@@ -24,13 +26,20 @@ func (c check) readiness(ctx context.Context, w http.ResponseWriter, r *http.Req
 			//return web.NewShutdownError("forcing shutdown")
 		}
 	*/
-	status := struct {
-		Status string
-	}{
-		Status: "OK",
+	status := "ok"
+	statusCode := http.StatusOK
+	if err := database.StatusCheck(ctx, cg.db); err != nil {
+		status = "db not ready"
+		statusCode = http.StatusInternalServerError
 	}
 
-	return web.Respond(ctx, w, status, http.StatusOK)
+	health := struct {
+		Status string `json:"status"`
+	}{
+		Status: status,
+	}
+
+	return web.Respond(ctx, w, health, statusCode)
 
 }
 
@@ -38,7 +47,7 @@ func (c check) readiness(ctx context.Context, w http.ResponseWriter, r *http.Req
 // app is deployed to a Kubernetes cluster, it will also return pod, node, and
 // namespace details via the Downward API. The Kubernetes environment variables
 // need to be set within your Pod/Deployment manifest.
-func (c check) liveness(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (cg checkGroup) liveness(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	/*
 		ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "handlers.check.liveness")
 		defer span.End()
@@ -59,7 +68,7 @@ func (c check) liveness(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		Namespace string `json:"namespace,omitempty"`
 	}{
 		Status:    "up",
-		Build:     c.build,
+		Build:     cg.build,
 		Host:      host,
 		Pod:       os.Getenv("KUBERNETES_PODNAME"),
 		PodIP:     os.Getenv("KUBERNETES_NAMESPACE_POD_IP"),
