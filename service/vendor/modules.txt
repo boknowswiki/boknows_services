@@ -42,6 +42,10 @@ github.com/lib/pq/scram
 github.com/pkg/errors
 # github.com/stretchr/testify v1.7.0
 ## explicit
+# golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
+## explicit
+golang.org/x/crypto/bcrypt
+golang.org/x/crypto/blowfish
 # golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 ## explicit
 # gopkg.in/go-playground/assert.v1 v1.2.1
