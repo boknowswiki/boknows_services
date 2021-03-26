@@ -22,6 +22,11 @@ github.com/go-playground/locales/en
 github.com/go-playground/universal-translator
 # github.com/google/go-cmp v0.5.4
 ## explicit
+github.com/google/go-cmp/cmp
+github.com/google/go-cmp/cmp/internal/diff
+github.com/google/go-cmp/cmp/internal/flags
+github.com/google/go-cmp/cmp/internal/function
+github.com/google/go-cmp/cmp/internal/value
 # github.com/google/uuid v1.2.0
 ## explicit
 github.com/google/uuid

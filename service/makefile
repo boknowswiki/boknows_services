@@ -93,6 +93,11 @@ tidy:
 	go mod tidy
 	go mod vendor
 
+# ==============================================================================
+# Running tests within the local computer
+
 test:
-	go test -v ./... -count=1
+	go test ./... -count=1
 	#staticcheck ./...
+	# go test -coverprofile cover.out
+	# go tool cover -html cover.out
