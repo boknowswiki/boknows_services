@@ -134,44 +134,79 @@ func (u User) Update(ctx context.Context, traceID string, claims auth.Claims, us
 }
 
 // Delete removes a user from the database.
-func (u User) Delete(ctx context.Context, traceID string, userID string) error {
+func (u User) Delete(ctx context.Context, traceID string, claims auth.Claims, userID string) error {
 	/*
 		ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.delete")
 		defer span.End()
 	*/
 
-	if _, err := uuid.Parse(userID); err != nil {
-		return ErrInvalidID
+	/*
+		if err := validate.CheckID(userID); err != nil {
+			return database.ErrInvalidID
+		}
+	*/
+
+	// If you are not an admin and looking to delete someone other than yourself.
+	if !claims.Authorized(auth.RoleAdmin) && claims.Subject != userID {
+		return database.ErrForbidden
 	}
 
-	const q = `DELETE FROM users WHERE user_id = $1`
+	data := struct {
+		UserID string `db:"user_id"`
+	}{
+		UserID: userID,
+	}
 
-	u.log.Printf("%s : %s : query : %s", traceID, "user.Delete",
-		database.Log(q, userID),
+	const q = `
+	DELETE FROM
+		users
+	WHERE
+		user_id = :user_id`
+
+	u.log.Printf("%s: %s: %s", traceID, "user.Delete",
+		database.Log(q, data),
 	)
 
-	if _, err := u.db.ExecContext(ctx, q, userID); err != nil {
-		return errors.Wrapf(err, "deleting user %s", userID)
+	if _, err := u.db.NamedExecContext(ctx, q, data); err != nil {
+		return errors.Wrapf(err, "deleting user %s", data.UserID)
 	}
 
 	return nil
 }
 
 // Query retrieves a list of existing users from the database.
-func (u User) Query(ctx context.Context, traceID string) ([]Info, error) {
+func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPerPage int) ([]User, error) {
 	/*
 		ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.query")
 		defer span.End()
 	*/
 
-	const q = `SELECT * FROM users`
+	data := struct {
+		Offset      int `db:"offset"`
+		RowsPerPage int `db:"rows_per_page"`
+	}{
+		Offset:      (pageNumber - 1) * rowsPerPage,
+		RowsPerPage: rowsPerPage,
+	}
 
-	log.Printf("%s : %s : query : %s", traceID, "user.Query",
-		database.Log(q),
+	const q = `
+	SELECT
+		*
+	FROM
+		users
+	ORDER BY
+		user_id
+	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+
+	u.log.Printf("%s: %s: %s", traceID, "user.Query",
+		database.Log(q, data),
 	)
 
-	users := []Info{}
-	if err := u.db.SelectContext(ctx, &users, q); err != nil {
+	var users []User
+	if err := database.NamedQuerySlice(ctx, u.db, q, data, &users); err != nil {
+		if err == database.ErrNotFound {
+			return nil, database.ErrNotFound
+		}
 		return nil, errors.Wrap(err, "selecting users")
 	}
 

@@ -106,7 +106,7 @@ func TestUser(t *testing.T) {
 				t.Logf("\t%s\tTest %d:\tShould be able to see updates to Email.", tests.Success, testID)
 			}
 
-			if err := u.Delete(ctx, traceID, usr.ID); err != nil {
+			if err := u.Delete(ctx, traceID, claims, usr.ID); err != nil {
 				t.Fatalf("\t%s\tTest %d:\tShould be able to delete user : %s.", tests.Failed, testID, err)
 			}
 			t.Logf("\t%s\tTest %d:\tShould be able to delete user.", tests.Success, testID)
