@@ -175,40 +175,52 @@ func (u User) Delete(ctx context.Context, traceID string, claims auth.Claims, us
 }
 
 // Query retrieves a list of existing users from the database.
-func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPerPage int) ([]User, error) {
+func (u User) Query(ctx context.Context, traceID string, pageNumber int, rowsPerPage int) ([]Info, error) {
 	/*
 		ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.data.user.query")
 		defer span.End()
 	*/
 
-	data := struct {
-		Offset      int `db:"offset"`
-		RowsPerPage int `db:"rows_per_page"`
-	}{
-		Offset:      (pageNumber - 1) * rowsPerPage,
-		RowsPerPage: rowsPerPage,
-	}
+	const q = `SELECT * FROM users ORDER BY user_id OFFSET $1 ROWS FETCH NEXT $2 ROWS ONLY`
+	offset := (pageNumber - 1) * rowsPerPage
 
-	const q = `
-	SELECT
-		*
-	FROM
-		users
-	ORDER BY
-		user_id
-	OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+	/*
+		data := struct {
+			Offset      int `db:"offset"`
+			RowsPerPage int `db:"rows_per_page"`
+		}{
+			Offset:      (pageNumber - 1) * rowsPerPage,
+			RowsPerPage: rowsPerPage,
+		}
+
+		const q = `
+		SELECT
+			*
+		FROM
+			users
+		ORDER BY
+			user_id
+		OFFSET :offset ROWS FETCH NEXT :rows_per_page ROWS ONLY`
+	*/
 
 	u.log.Printf("%s: %s: %s", traceID, "user.Query",
-		database.Log(q, data),
+		database.Log(q, offset, rowsPerPage),
+		//database.Log(q, data),
 	)
 
-	var users []User
-	if err := database.NamedQuerySlice(ctx, u.db, q, data, &users); err != nil {
-		if err == database.ErrNotFound {
-			return nil, database.ErrNotFound
-		}
+	users := []Info{}
+	if err := u.db.SelectContext(ctx, &users, q, offset, rowsPerPage); err != nil {
 		return nil, errors.Wrap(err, "selecting users")
 	}
+	/*
+		var users []User
+		if err := database.NamedQuerySlice(ctx, u.db, q, data, &users); err != nil {
+			if err == database.ErrNotFound {
+				return nil, database.ErrNotFound
+			}
+			return nil, errors.Wrap(err, "selecting users")
+		}
+	*/
 
 	return users, nil
 }
