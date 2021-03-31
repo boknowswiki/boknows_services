@@ -9,6 +9,7 @@ import (
 	"github.com/boknowswiki/boknows_services/service/business/auth"
 	"github.com/boknowswiki/boknows_services/service/foundation/web"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel/trace"
 	//"go.opentelemetry.io/otel/api/trace"
 )
 
@@ -26,10 +27,8 @@ func Authenticate(a *auth.Auth) web.Middleware {
 
 		// Create the handler that will be attached in the middleware chain.
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			/*
-				ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.mid.authenticate")
-				defer span.End()
-			*/
+			ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.mid.authenticate")
+			defer span.End()
 
 			// Expecting: bearer <token>
 			authStr := r.Header.Get("authorization")
@@ -68,10 +67,8 @@ func Authorize(roles ...string) web.Middleware {
 
 		// Create the handler that will be attached in the middleware chain.
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			/*
-				ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.mid.hasrole")
-				defer span.End()
-			*/
+			ctx, span := trace.SpanFromContext(ctx).Tracer().Start(ctx, "business.mid.authorize")
+			defer span.End()
 
 			// If the context is missing this value return failure.
 			claims, ok := ctx.Value(auth.Key).(auth.Claims)

@@ -20,6 +20,12 @@ import (
 	"github.com/boknowswiki/boknows_services/service/foundation/database"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/trace/zipkin"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/semconv"
 )
 
 /*
@@ -66,6 +72,11 @@ func run(log *log.Logger) error {
 			Host       string `conf:"default:db"`
 			Name       string `conf:"default:postgres"`
 			DisableTLS bool   `conf:"default:true"`
+		}
+		Zipkin struct {
+			ReporterURI string  `conf:"default:http://zipkin:9411/api/v2/spans"`
+			ServiceName string  `conf:"default:sales-api"`
+			Probability float64 `conf:"default:0.05"`
 		}
 	}
 
@@ -152,6 +163,40 @@ func run(log *log.Logger) error {
 		log.Printf("main: Database Stopping : %s", cfg.DB.Host)
 		db.Close()
 	}()
+
+	// =========================================================================
+	// Start Tracing Support
+
+	// WARNING: The current Init settings are using defaults which may not be
+	// compatible with your project. Please review the documentation for
+	// opentelemetry.
+
+	log.Println("main: Initializing OT/Zipkin tracing support")
+
+	exporter, err := zipkin.NewRawExporter(
+		cfg.Zipkin.ReporterURI,
+		zipkin.WithLogger(log),
+	)
+	if err != nil {
+		return errors.Wrap(err, "creating new exporter")
+	}
+
+	tp := trace.NewTracerProvider(
+		trace.WithSampler(trace.TraceIDRatioBased(cfg.Zipkin.Probability)),
+		trace.WithBatcher(exporter,
+			trace.WithMaxExportBatchSize(trace.DefaultMaxExportBatchSize),
+			trace.WithBatchTimeout(trace.DefaultBatchTimeout),
+			trace.WithMaxExportBatchSize(trace.DefaultMaxExportBatchSize),
+		),
+		trace.WithResource(
+			resource.NewWithAttributes(
+				semconv.ServiceNameKey.String(cfg.Zipkin.ServiceName),
+				attribute.String("exporter", "zipkin"),
+			),
+		),
+	)
+
+	otel.SetTracerProvider(tp)
 
 	// =========================================================================
 	// Start Debug Service
