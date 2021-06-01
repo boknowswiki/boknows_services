@@ -17,6 +17,9 @@ import (
 )
 
 /*
+	first generate private key, then use the private key to generate public key as a public-private key pair.
+	usually i sign some data with my private key, and give you the public key, then you can use the public key to verify the data is valid and from me. Or you can sign some data with your private key and give me the public key, i can use your public key to valid the data from you.
+
 	openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048
 	openssl rsa -pubout -in private.pem -out public.pem
 */
